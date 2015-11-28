@@ -86,16 +86,16 @@ function GM:MenuShow()
 	-- GAMEMODE:ShowMouse()
 
 end
-concommand.Add("+menu", GM.MenuShow ) 
-concommand.Add("+menu_context", GM.MenuShow )
+concommand.Add("+menu", GM.MenuShow )
+--concommand.Add("+menu_context", GM.MenuShow )
 
 function GM:MenuHide()
 
 	-- GAMEMODE:HideMouse()
 
 end
-concommand.Add("-menu", GM.MenuHide ) 
-concommand.Add("-menu_context", GM.MenuHide )
+concommand.Add("-menu", GM.MenuHide )
+--concommand.Add("-menu_context", GM.MenuHide )
 
 -- Scroll playerlist
 hook.Add( "PlayerBindPress", "PlayerListScroll", function( ply, bind, pressed )

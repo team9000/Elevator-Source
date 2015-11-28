@@ -189,6 +189,7 @@ function PLAYER:PerformLayout()
 end
 
 local PixeltailIcon = Material( "elevator/pixeltailicon.png" )
+local DevFixer = Material( "elevator/devfixicon.png" )
 local AdminIcon = Material( "elevator/adminicon.png" )
 
 local PixelTailDevs = {}
@@ -198,6 +199,9 @@ PixelTailDevs["STEAM_0:1:15862026"]	= true	// Sam
 PixelTailDevs["STEAM_0:0:5129735"]	= true	// Mr. Sunabouzu
 PixelTailDevs["STEAM_0:0:15339565"]	= true	// Clopsy
 PixelTailDevs["STEAM_0:1:4556804"]	= true	// Azuisleet
+
+local ElevatorDevFixer = {}
+ElevatorDevFixer["STEAM_0:1:24323838"]	= true	// JonnyBoy0719
 
 function PLAYER:Paint( w, h )
 
@@ -211,6 +215,11 @@ function PLAYER:Paint( w, h )
 		if PixelTailDevs[ self.Player:SteamID() ] then
 
 			surface.SetMaterial( PixeltailIcon )
+			surface.DrawTexturedRect( self.Name.x + self.Name:GetWide() + 5, self.Name.y + 3, 40, 16 )
+		
+		elseif ElevatorDevFixer[ self.Player:SteamID() ] then
+
+			surface.SetMaterial( DevFixer )
 			surface.DrawTexturedRect( self.Name.x + self.Name:GetWide() + 5, self.Name.y + 3, 40, 16 )
 		
 		elseif self.Player:IsAdmin() then

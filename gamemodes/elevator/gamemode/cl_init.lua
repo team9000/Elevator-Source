@@ -13,7 +13,7 @@ include( "postprocess/init.lua" )
 GM.CrosshairEnts = { "elevator_drink", "elevator_tvremote", "elevator_tvvolume" }
 
 // Binds to disable
-GM.DisableBinds = { "+menu", "+menu_context", "+speed" }
+GM.DisableBinds = { "+menu", "+speed" }
 
 // HUD elements to hide
 GM.HUDToHide = { "CHudAmmo", "CHudCrosshair", "CHudZoom",
