@@ -126,7 +126,7 @@ end )
 function hook.Exist(name)
 	for i,t in pairs(hook.GetTable()) do
 		for k,v in pairs(t) do
-			if(string.lower(k) == string.lower(name)) then return true end
+			if(type(k) == "string" && string.lower(k) == string.lower(name)) then return true end
 		end
 	end
 	return false
