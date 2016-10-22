@@ -1009,7 +1009,7 @@ end
  */
 function GM:RemoveNPC( npc )
 
-	if (npc:getClass() == "npc_citizen") then
+	if (npc:GetClass() == "npc_citizen") then
 		local dmginfo = DamageInfo()
 		dmginfo:SetDamage( 100 )
 		dmginfo:SetDamageType( DMG_DISSOLVE )
