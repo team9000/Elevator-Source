@@ -321,6 +321,7 @@ function GM:StartFloor( Floor )
 	self:MoveAllEnts( self.Intermission, self.CurrentFloor )
 
 	// Effects
+	self:StopMusicAll()
 	self:PlaySoundAll( SOUND_BELL )
 	self:PlaySoundAll( SOUND_STOP )
 	self:SetFloorEffects( Floor, true )
