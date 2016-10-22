@@ -26,7 +26,6 @@ AddCSLuaFile( "postprocess/init.lua" )
 
 // CUSTOMIZABLES
 GM.IntermissionTime = { 45, 60 } // range of random time before next floor (in seconds)
-GM.RemoveNPCsAfter 	= 5 * 60 // automatically remove NPCs after 5 minutes
 
 GM.LobbyName		= "elevator_lobby" // entity name of lobby elevator
 GM.IntermissionName	= "elevator_main" // entity name of intermission elevator
@@ -1010,12 +1009,16 @@ end
  */
 function GM:RemoveNPC( npc )
 
-	local dmginfo = DamageInfo()
+	if (npc:getClass() == "npc_citizen")
+		local dmginfo = DamageInfo()
 		dmginfo:SetDamage( 100 )
 		dmginfo:SetDamageType( DMG_DISSOLVE )
 		dmginfo:SetInflictor( npc )
 		dmginfo:SetAttacker( npc )
-	npc:TakeDamageInfo( dmginfo )
+		npc:TakeDamageInfo( dmginfo )
+	else
+		npc:Remove()
+	end
 
 end
 
