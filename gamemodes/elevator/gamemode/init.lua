@@ -118,9 +118,9 @@ function GM:ValidateFloors()
 
 	// Find invalid floors
 	for _, floor in pairs( self.Floors ) do
-	
+
 		local floorEnt = ents.FindByName( floor )[1]
-		
+
 		// Not valid, removing from list
 		if ( !IsValid( floorEnt ) || floorEnt:GetClass() != "info_elevator_floor" ) then
 
@@ -128,17 +128,17 @@ function GM:ValidateFloors()
 			table.insert( InvalidFloors, floor )
 
 		end
-	
+
 	end
 
 	// Remove invalid floors
 	for _, floor in pairs( InvalidFloors ) do
-	
+
 		if ( table.HasValue( self.Floors, floor ) ) then
 			local id = table.KeyFromValue( self.Floors, floor )
 			table.remove( self.Floors, id )
-		end	
-	
+		end
+
 	end
 
 	// Update max floors to play
@@ -153,7 +153,7 @@ end
 function GM:LocateCustomFloors()
 
 	for _, ent in pairs( ents.GetAll() ) do
-	
+
 		if ( IsValid( ent ) && ent:GetClass() == "info_elevator_floor" ) then
 
 			local floor = ent:GetName()
@@ -202,9 +202,6 @@ function GM:Think()
 	if ( self.State == STATE_INTERMISSION ) then
 		self:IntermissionThink()
 	end
-	
-	// Remove NPCs after awhile
-	self:NPCRemoveThink()
 
 	// Check if everyone left
 	if ( self:IsPlaying() ) then
@@ -212,7 +209,7 @@ function GM:Think()
 			self:Restart()
 		end
 	end
-	
+
 	// Check if everyone left
 	for _, ply in pairs(team.GetPlayers( TEAM_END )) do
 		if IsValid( ply:GetSaveTable().m_hUseEntity ) then
@@ -232,19 +229,19 @@ function GM:SendPlayer( ply )
 	if ( !IsValid( ply ) || !ply:IsPlayer() || !ply:Alive() ) then return end
 
 	if ( !self:IsElevatorValid() ) then
-	
+
 		// Gather entity data
 		self:GatherEntityData()
-		
+
 		// If data was invalid...
 		if ( !self:IsElevatorValid() ) then
 			self:PlayerMessage( ply, "Error!", "Something is terribly wrong with the elevator! Make sure you have the gamemode properly installed!" )
 			return
 		end
 	end
-	
+
 	// The game is over, send them to the ending
-	if ( self.State == STATE_GAMEOVER ) then 
+	if ( self.State == STATE_GAMEOVER ) then
 
 		ply:SetTeam( TEAM_END )
 		self:PlaySound( ply, SOUND_BELL )
@@ -305,7 +302,7 @@ end
 function GM:StartFloor( Floor )
 
 	//Msg( "Starting Floor... " .. Floor .. "\n" )
-	
+
 	// End current floor, if needed
 	if ( self.CurrentFloor ) then self:EndFloor() end
 
@@ -315,7 +312,7 @@ function GM:StartFloor( Floor )
 	// Sets the current floor
 	self.CurrentFloorName = Floor
 	self.CurrentFloor = ents.FindByName( Floor )[1]
-	
+
 	// Start current floor
 	self.CurrentFloor:Start()
 
@@ -325,6 +322,7 @@ function GM:StartFloor( Floor )
 
 	// Effects
 	self:PlaySoundAll( SOUND_BELL )
+	self:PlaySoundAll( SOUND_STOP )
 	self:SetFloorEffects( Floor, true )
 
 end
@@ -340,14 +338,14 @@ function GM:EndFloor()
 
 	// End current floor
 	self.CurrentFloor:End()
-	
+
 	// Insert into played floors
 	table.insert( self.PlayedFloors, self.CurrentFloorName )
 
 	// Move all players/ents
 	self:MoveAllPlayers( self.CurrentFloor, self.Intermission )
 	self:MoveAllEnts( self.CurrentFloor, self.Intermission )
-	
+
 	// Effects
 	self:SetFloorEffects( self.CurrentFloorName, false )
 
@@ -357,6 +355,22 @@ function GM:EndFloor()
 
 	// Start intermission
 	self:IntermissionStart()
+
+	// Nuke all NPCs that haven't been in the elevator
+	for _, ent in pairs( ents.GetAll() ) do
+		if IsValid( ent ) && ent:IsNPC() then
+			if ( !ent.WasInElevator ) then
+				self:RemoveNPC( ent )
+			end
+		end
+	end
+
+	// Nuke all lingering func_physbox (caused by bugs on certain floors?)
+	for k,v in pairs(ents.FindByClass('func_physbox')) do
+		if(!v:CreatedByMap()) then
+			v:Remove()
+		end
+	end
 
 end
 
@@ -369,7 +383,7 @@ function GM:IntermissionStart()
 
 	// Set delay between floors
 	self.Time = CurTime() + math.random( self.IntermissionTime[1], self.IntermissionTime[2] )
-	
+
 	// Set state
 	self.State = STATE_INTERMISSION
 
@@ -406,20 +420,13 @@ end
  */
 function GM:IntermissionEnd()
 
-	//Msg( "Intermission end\n" )
-
-	// Stop music and play stop sound
-	self:StopMusicAll()
-	self:PlaySoundAll( SOUND_STOP )
-
 	// Determine if the game should end
 	if ( #self.PlayedFloors >= self.MaxFloorsToPlay ) then
 		self:End()
-		return
+	else
+		// Start a new floor
+		self:StartFloor( self:GetNextFloor() )
 	end
-
-	// Start a new floor
-	self:StartFloor( self:GetNextFloor() )	
 
 end
 
@@ -434,17 +441,34 @@ function GM:End()
 	// Move to awesome ending floor and stuff
 	self.State = STATE_GAMEOVER
 
+	// Nuke all NPCs that are already on the ending floor
+	for _, ent in pairs( ents.GetAll() ) do
+		if IsValid( ent ) && ent:IsNPC() then
+			if ( ent.WasInEnd ) then
+				self:RemoveNPC( ent )
+			end
+		end
+	end
+
+	// Nuke all Gibs (or else they build up)
+	for k,v in pairs(ents.FindByClass('human_gib')) do
+		if(!v:CreatedByMap()) then
+			v:Remove()
+		end
+	end
+
 	// Move players/ents
 	self:MoveAllPlayers( self.Intermission, self.Ending )
 	self:MoveAllEnts( self.Intermission, self.Ending )
-	
+
 	// Clear floor references
 	self.CurrentFloor = nil
 	self.CurrentFloorName = nil
 
 	// Handle sound
-	self:PlaySoundAll( SOUND_BELL )
 	self:StopMusicAll()
+	self:PlaySoundAll( SOUND_BELL )
+	self:PlaySoundAll( SOUND_STOP )
 
 	// Open ending floor
 	if ( self.Ending ) then
@@ -462,15 +486,15 @@ end
  * Restarts the entire gamemode and map
  */
 function GM:Restart()
-	
+
 	self.State = STATE_WAITING
-	
+
 	self.CurrentFloor = nil
 	self.CurrentFloorName = nil
 	self.PlayedFloors = {}
-	
+
 	self:StopMusicAll()
-	
+
 	--[[ for _, ply in pairs( player.GetAll() ) do
 		self:PlayerMessage( ply, "Elevator", "The game has been restarted!" )
 	end ]]
@@ -482,7 +506,7 @@ end
  */
 function GM:HardRestart()
 
-	game.CleanUpMap( true, { "npc_citizen", "npc_monk", 
+	game.CleanUpMap( true, { "npc_citizen", "npc_monk",
 							 "billiard_ball", "billiard_cue",
 							 "billiard_static", "billiard_table",
 							 "elevator_billiards",
@@ -497,7 +521,7 @@ function GM:HardRestart()
 	self.Intermission = nil
 	self.Ending = nil
 	self:GatherEntityData()
-	
+
 end
 
 /**
@@ -525,7 +549,7 @@ function GM:GetNextSong()
 	if ( song == self.LastSongID ) then
 		return self:GetNextSong()
 	end
-	
+
 	return song
 
 end
@@ -563,7 +587,7 @@ end
 function GM:MoveAllEnts( fromFloor, toFloor )
 
 	if !IsValid( fromFloor ) || !IsValid( toFloor ) then return end
-	
+
 	//Msg( "Teleporting ents..\n")
 
 	local pos = fromFloor:GetPos() + Vector( 0, 0, ELEVATOR_WIDTH / 2 )
@@ -574,8 +598,12 @@ function GM:MoveAllEnts( fromFloor, toFloor )
 		// Teleport only valid entities
 		if table.HasValue( self.ValidEnts, ent:GetClass() ) || ent:IsNPC() then
 			self:Teleport( ent, fromFloor, toFloor )
+			ent.WasInElevator = true
+			if (toFloor == self.Ending) then
+				ent.WasInEnd = true
+			end
 		end
-		
+
 	end
 
 end
@@ -595,7 +623,7 @@ function GM:Teleport( ent, fromFloor, toFloor )
 	// Offset position
 	local offset = pos - old
 	local vec = new + offset
-	
+
 	// Handle if entity is player
 	if ent:IsPlayer() then
 
@@ -666,7 +694,7 @@ end
  * Ends the current music to all elevator players
  */
 function GM:StopMusicAll()
-	
+
 	for _, ply in pairs( team.GetPlayers( TEAM_ELEVATOR ) ) do
 		self:EndCurrentMusic( ply )
 	end
@@ -722,13 +750,13 @@ end
 function GM:OnEntityCreated( ent )
 
 	if ( !IsValid( ent ) || !ent:IsNPC() ) then return end
-	
+
 	// Disable player collision
 	ent:SetCollisionGroup( COLLISION_GROUP_DEBRIS_TRIGGER )
 
 	// Give them a name
 	timer.Simple( .1, function() self:SetNPCName(ent) end ) // we need to delay this a bit
-	
+
 	// HUSH THE PREACHER
 	if ( ent:GetClass() == "npc_monk" ) then
 		ent:AddRelationship("player D_NU 999")
@@ -742,9 +770,9 @@ end
 function GM:SendNPCNames( ply )
 
 	if ( !IsValid( ply ) || !ply:IsPlayer() ) then return end
-	
+
 	for _, ent in pairs( ents.GetAll() ) do
-	
+
 		if ( IsValid( ent ) && ent:IsNPC() && ent.RealNameID ) then
 
 			umsg.Start( "Elevator_UpdateNPCName", ply )
@@ -852,7 +880,7 @@ function GM:SetFloorEffects( FloorName, bEnable )
 			timer.Create( "RandomSnifflesCough", 5, 0, function()
 
 				for _, ply in pairs( team.GetPlayers( TEAM_ELEVATOR ) ) do
-					
+
 					local watch = ply:GetWatch()
 					if IsValid(watch) then
 						watch.iNextCough = CurTime() + math.random( 2, 4 )
@@ -890,13 +918,13 @@ function GM:SetFloorEffects( FloorName, bEnable )
 						dmginfo:SetDamageType(DMG_GENERIC)
 						dmginfo:SetInflictor(npc)
 						dmginfo:SetAttacker(npc)
-						
+
 					npc:TakeDamageInfo(dmginfo)
 				end
 			end)*/
 		end
 	end
-	
+
 	// The fall floor
 	if ( FloorName == "elevator_26_top" ) then
 
@@ -912,19 +940,19 @@ function GM:SetFloorEffects( FloorName, bEnable )
 	// Get smart floor
 	// Force end it after 35 seconds
 	if ( FloorName == "elevator_19" ) then
-	
+
 		if bEnable then
 
 			timer.Create( "ForceRemoveGetSmart", 35, 1, function()
 				self.CurrentFloor:End()
 			end )
 			timer.Start( "ForceRemoveGetSmart" )
-		
+
 		else
 			timer.Stop( "ForceRemoveGetSmart" )
-			timer.Destroy( "ForceRemoveGetSmart" )		
+			timer.Destroy( "ForceRemoveGetSmart" )
 		end
-	
+
 	end
 
 end
@@ -942,7 +970,7 @@ function GM:SetSleepTime( bSleep )
 		umsg.End()
 
 	end
-	
+
 end
 
 /**
@@ -971,34 +999,6 @@ function GM:SetPlayerRandomNames( bEnable )
 		umsg.Start( "Elevator_RandomNames", ply )
 			umsg.Bool( bEnable )
 		umsg.End()
-
-	end
-	
-end
-
-/**
- * Remove NPCs on end floor after 5 minutes
- */
-function GM:NPCRemoveThink()
-
-	if ( !self:IsElevatorValid() ) then return end
-
-	// Check for removal of NPCs
-	for _, ent in pairs( ents.GetAll() ) do
-	
-		if IsValid( ent ) && ent:IsNPC() then
-
-			local dist = self.Ending:GetPos():Distance( ent:GetPos() )
-			if ( !ent.RemoveDelay && dist <= ( ELEVATOR_WIDTH / 2 ) ) then
-
-				// Tag NPC for removal after 5 minutes
-				ent.RemoveDelay = CurTime() + self.RemoveNPCsAfter
-			end
-		
-			if ( ent.RemoveDelay && CurTime() > ent.RemoveDelay ) then
-				self:RemoveNPC( ent )
-			end
-		end
 
 	end
 
